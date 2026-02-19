@@ -1,0 +1,55 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: market_surveillance_db
+    environment:
+      POSTGRES_USER: market_user
+      POSTGRES_PASSWORD: market_pass123
+      POSTGRES_DB: market_surveillance
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - market_network
+
+  backend:
+    build: ./backend
+    container_name: market_surveillance_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://market_user:market_pass123@postgres/market_surveillance
+      SECRET_KEY: your-super-secret-key-change-in-production
+    depends_on:
+      - postgres
+    networks:
+      - market_network
+
+  frontend:
+    build: ./frontend
+    container_name: market_surveillance_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - market_network
+
+volumes:
+  postgres_data:
+
+networks:
+  market_network:
+    driver: bridge
